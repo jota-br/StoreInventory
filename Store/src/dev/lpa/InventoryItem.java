@@ -29,32 +29,41 @@ public class InventoryItem implements Comparable<InventoryItem> {
         return (categoryIdentifier + productIdentifier + manufacturerIdentifier + sequenceValue).toUpperCase();
     }
 
-    public void reserveItem(int qty) {
+    public boolean reserveItem(int qty) {
 
         int available = this.qtyTotal - this.qtyReserved;
         if (available >= qty) {
             this.qtyReserved += qty;
-            System.out.printf("%-15s %-8d units reserved%n", this.product, qty);
-        } else {
-            System.out.printf("Required quantity not available, in stock: %d%n", available);
+            return true;
         }
+
+        System.out.printf("Required quantity not available, in stock: %d%n", available);
+        return false;
     }
 
     public void releaseItem(int qty) {
 
+        if (qty > this.qtyReserved) {
+            this.qtyReserved = 0;
+            return;
+        }
         this.qtyReserved -= qty;
-        System.out.printf("%-15s %-8d units released%n", this.product, qty);
     }
 
-    public void sellItem(int qty) {
+    public boolean sellItem(int qty) {
 
-        this.qtyReserved -= qty;
-        this.qtyTotal -= qty;
+        if (qty <= this.qtyTotal) {
 
-        if (this.qtyTotal <= qtyLow) {
-            System.out.printf("Product %s Order placed%n", this.product.name());
-            placeInventoryOrder(qtyReorder);
+            this.qtyReserved -= qty;
+            this.qtyTotal -= qty;
+
+            if (this.qtyTotal <= qtyLow) {
+                System.out.printf("Product %s Order placed%n", this.product.name());
+                placeInventoryOrder(qtyReorder);
+            }
+            return true;
         }
+        return false;
     }
 
     public void placeInventoryOrder(int qty) {
@@ -65,7 +74,9 @@ public class InventoryItem implements Comparable<InventoryItem> {
         }
 
         this.qtyTotal += qty;
+        System.out.println("-".repeat(50));
         System.out.printf("%-15s %-8d units placed in inventory%n", this.product, qty);
+        System.out.println("-".repeat(50));
     }
 
     public Product getProduct() {
@@ -88,13 +99,21 @@ public class InventoryItem implements Comparable<InventoryItem> {
         return salesPrice;
     }
 
+    public String getProductSKU() {
+        return product.sku;
+    }
+
+    public String getProductName() {
+        return product.name;
+    }
+
     @Override
     public int compareTo(InventoryItem o) {
         int result = this.getProduct().category.compareTo(o.getProduct().category);
         return (result == 0) ? this.getProduct().name().compareTo(o.getProduct().name()) : result;
     }
 
-    record Product(String sku, String name, String manufacturer, String category) implements Comparable<Product> {
+    protected record Product(String sku, String name, String manufacturer, String category) implements Comparable<Product> {
 
         static Comparator<Product> SortByCategoryThenName = Comparator.comparing(Product::category).thenComparing(Product::name);
         static Comparator<Product> SortByNameThenCategory = Comparator.comparing(Product::name).thenComparing(Product::category);
@@ -103,7 +122,7 @@ public class InventoryItem implements Comparable<InventoryItem> {
 
         @Override
         public String toString() {
-            return "%-15s %-15s %-10s %-10s".formatted(name, category, manufacturer, sku);
+            return "%s (CATEGORY:%s) %s (SKU:%s)".formatted(name, category, manufacturer, sku);
         }
 
         @Override
